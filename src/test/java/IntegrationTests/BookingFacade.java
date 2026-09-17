@@ -17,7 +17,7 @@ public class BookingFacade {
         List<Booking> allBookings = bookingService.getAllBookings();
 
         for (Booking booking : allBookings){
-            if (booking.getCar().getId() == id){
+            if (booking.getCar().getId().equals(id)){
                 allBookings.remove(booking);
                 break;
             }

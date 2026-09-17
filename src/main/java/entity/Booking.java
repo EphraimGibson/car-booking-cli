@@ -2,6 +2,7 @@ package entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 
@@ -90,7 +91,7 @@ public class Booking {
             throw new IllegalArgumentException("Start date cannot be null");
         }
 
-        if (startDate.isBefore(LocalDate.now())){
+        if (pStartDate.isBefore(LocalDate.now())){
             throw new IllegalArgumentException("Start date cannot be in the past");
         }
 
@@ -171,7 +172,7 @@ public class Booking {
 
     private int getNumberOfDays() {
         if (startDate != null && endDate != null) {
-            return startDate.until(endDate).getDays();
+            return Math.toIntExact(ChronoUnit.DAYS.between(startDate, endDate));
         }
         return 0;
     }

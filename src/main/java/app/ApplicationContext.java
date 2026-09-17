@@ -3,6 +3,7 @@ package app;
 import entity.Brand;
 import entity.Car;
 import entity.User;
+import persistence.FilePersistence;
 import persistence.IPersistence;
 import persistence.MemoryPersistence;
 import service.BookingService;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ApplicationContext {
-    private final IPersistence persistence = new MemoryPersistence();
+    private final IPersistence persistence = new FilePersistence();
 
     private final BookingService bookingService = new BookingService(persistence);
     private final UserService userService = new UserService(persistence);

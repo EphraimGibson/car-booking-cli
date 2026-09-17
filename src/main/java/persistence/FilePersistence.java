@@ -52,8 +52,10 @@ public class FilePersistence implements IPersistence {
                 users.add(new User(UUID.fromString(userLineSplit[0]), userLineSplit[1]));
             }
         }
+        this.allUsers = users;
 
-        return users;
+
+        return new ArrayList<>(users);
     }
 
     @Override
@@ -109,7 +111,7 @@ public class FilePersistence implements IPersistence {
     public List<Car> getAllAvailableCars() {
         List<Car> availableCars = new ArrayList<>();
         List<Car> bookedCars = new ArrayList<>();
-        bookings.forEach(booking -> bookedCars.add(booking.getCar()));
+        getAllBookings().forEach(booking -> bookedCars.add(booking.getCar()));
 
         for (Car car : getAllCars()) {
             if (!bookedCars.contains(car)) {
@@ -140,31 +142,35 @@ public class FilePersistence implements IPersistence {
     @Override
     public void createBooking(Booking booking) {
 
-        for (Booking booking1 : getAllBookings()){
-            if (booking1.getCar().getId() == booking.getCar().getId()){
+        for (Booking existingBooking : getAllBookings()) {
+            if (existingBooking.getCar().getId().equals(booking.getCar().getId())) {
                 throw new IllegalArgumentException("Car is already booked");
             }
         }
 
-        for (User existingUser : getAllUsers()){
-            if (Objects.equals(existingUser.getId(), booking.getUser().getId())){
+        boolean userExists = false;
+        for (User existingUser : getAllUsers()) {
+            if (Objects.equals(existingUser.getId(), booking.getUser().getId())) {
+                userExists = true;
                 break;
             }
-            else {
-                throw new IllegalArgumentException("User cannot be found, please use an existing user");
-            }
+        }
+        if (!userExists) {
+            throw new IllegalArgumentException("User cannot be found, please use an existing user");
         }
 
-        for (Car existingCar : getAllCars()){
-            if (Objects.equals(existingCar.getId(), booking.getCar().getId())){
+        boolean carExists = false;
+        for (Car existingCar : getAllCars()) {
+            if (Objects.equals(existingCar.getId(), booking.getCar().getId())) {
+                carExists = true;
                 break;
             }
-            else {
-                throw new IllegalArgumentException("Car cannot be found, please use an existing car");
-            }
+
         }
 
-
+        if (!carExists) {
+            throw new IllegalArgumentException("Car cannot be found, please use an existing car");
+        }
 
 
         StringBuilder bookingCsvFormat = new StringBuilder();
@@ -176,7 +182,7 @@ public class FilePersistence implements IPersistence {
         bookingCsvFormat.append(booking.getEndDate()).append(",");
         bookingCsvFormat.append(booking.getStatus()).append(",");
         bookingCsvFormat.append(booking.getTotalPrice()).append(",");
-        bookingCsvFormat.append(booking.getCreatedOn()).append(",");
+        bookingCsvFormat.append(booking.getCreatedOn());
 
         try {
             bookingWriter.writeLineToFile(bookingCsvFormat.toString());
@@ -191,15 +197,15 @@ public class FilePersistence implements IPersistence {
     public void deleteBooking(UUID id) {
         List<Booking> allBookings = getAllBookings();
 
-        for (Booking booking : allBookings){
-            if (booking.getId() == id){
+        for (Booking booking : allBookings) {
+            if (booking.getId().equals(id)) {
                 allBookings.remove(booking);
                 break;
             }
         }
 
-        try (BufferedWriter writer = Files.newBufferedWriter(Path.of(BOOKINGS_CSV_FIlENAME))){
-            for (Booking booking : allBookings){
+        try (BufferedWriter writer = Files.newBufferedWriter(Path.of(BOOKINGS_CSV_FIlENAME))) {
+            for (Booking booking : allBookings) {
                 StringBuilder bookingCsvFormat = new StringBuilder();
 
                 bookingCsvFormat.append(booking.getId()).append(",");
@@ -209,7 +215,7 @@ public class FilePersistence implements IPersistence {
                 bookingCsvFormat.append(booking.getEndDate()).append(",");
                 bookingCsvFormat.append(booking.getStatus()).append(",");
                 bookingCsvFormat.append(booking.getTotalPrice()).append(",");
-                bookingCsvFormat.append(booking.getCreatedOn()).append(",");
+                bookingCsvFormat.append(booking.getCreatedOn());
 
                 writer.write(bookingCsvFormat.toString());
                 writer.newLine();
@@ -259,26 +265,26 @@ public class FilePersistence implements IPersistence {
 
         User user = null;
 
-        for (User existingUser : getAllUsers()){
-            if (Objects.equals(existingUser.getId().toString(), bookingField[1])){
-                 user = existingUser;
+        for (User existingUser : getAllUsers()) {
+            if (Objects.equals(existingUser.getId().toString(), bookingField[1])) {
+                user = existingUser;
                 break;
             }
-            else {
-                throw new IllegalArgumentException("can't find the user in the booking file");
-            }
+        }
+        if (user == null) {
+            throw new IllegalArgumentException("can't find the user in the booking file");
         }
 
         Car car = null;
 
-        for (Car existingCar : getAllCars()){
-            if (Objects.equals(existingCar.getId().toString(), bookingField[2])){
+        for (Car existingCar : getAllCars()) {
+            if (Objects.equals(existingCar.getId().toString(), bookingField[2])) {
                 car = existingCar;
                 break;
             }
-            else {
-                throw new IllegalArgumentException("can't find the car in booking file");
-            }
+        }
+        if (car == null) {
+            throw new IllegalArgumentException("can't find the car in booking file");
         }
 
         String[] startDateSplitted = bookingField[3].split("-");
