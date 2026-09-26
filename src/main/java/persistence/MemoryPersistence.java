@@ -64,6 +64,30 @@ public class MemoryPersistence implements IPersistence {
             }
         }
 
+        boolean userExists = false;
+        for (User existingUser : allUsers) {
+            if (Objects.equals(existingUser.getId(), booking.getUser().getId())) {
+                userExists = true;
+                break;
+            }
+        }
+        if (!userExists) {
+            throw new IllegalArgumentException("User cannot be found, please use an existing user");
+        }
+
+        boolean carExists = false;
+        for (Car existingCar : allCars) {
+            if (Objects.equals(existingCar.getId(), booking.getCar().getId())) {
+                carExists = true;
+                break;
+            }
+
+        }
+
+        if (!carExists) {
+            throw new IllegalArgumentException("Car cannot be found, please use an existing car");
+        }
+
         bookings.put(booking.getId(), booking);
     }
 

@@ -214,7 +214,7 @@ class BookingConnectionTest {
     @Test
     void testMakeBookingWithUnknownCarUnsuccessful(){
         //given
-        Car unknownCar = new Car("corolla", "testRegistreation", new BigDecimal(8), Brand.MERCEDES, false);
+        Car unknownCar = new Car("corolla", "testRegistration", new BigDecimal(8), Brand.MERCEDES, false);
         Booking booking = new Booking(testUser2, unknownCar, startDate, endDate);
 
         //when and then
