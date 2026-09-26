@@ -17,7 +17,7 @@ public class FilePersistence implements IPersistence {
     private List<Car> allCars;
     private List<User> allUsers;
 
-    private List<Booking> bookings;
+    private Map<UUID, Booking> bookings;
 
     public FilePersistence(FileReader pFileReader, FileWriter pBookingWriter) {
         fileReader = pFileReader;
@@ -55,11 +55,16 @@ public class FilePersistence implements IPersistence {
     @Override
     public List<Car> getAllAvailableCars() {
         List<Car> availableCars = new ArrayList<>();
-        List<Car> bookedCars = new ArrayList<>();
-        getAllBookings().forEach(booking -> bookedCars.add(booking.getCar()));
+        Set<UUID> bookedCarIds = new HashSet<>();
+
+        getAllBookings().forEach(booking -> {
+            if (booking.getStatus() == BookingStatus.ACTIVE ){
+                bookedCarIds.add(booking.getCar().getId());
+            }
+        });
 
         for (Car car : getAllCars()) {
-            if (!bookedCars.contains(car)) {
+            if (!bookedCarIds.contains(car.getId())){
                 availableCars.add(car);
             }
         }
@@ -83,14 +88,14 @@ public class FilePersistence implements IPersistence {
     public void createBooking(Booking booking) {
 
         for (Booking existingBooking : getAllBookings()) {
-            if (existingBooking.getCar().getId().equals(booking.getCar().getId())) {
+            if (existingBooking.getCar().equals(booking.getCar()) && existingBooking.getStatus().equals(BookingStatus.ACTIVE)) {
                 throw new IllegalArgumentException("Car is already booked");
             }
         }
 
         boolean userExists = false;
         for (User existingUser : getAllUsers()) {
-            if (Objects.equals(existingUser.getId(), booking.getUser().getId())) {
+            if (existingUser.equals(booking.getUser())) {
                 userExists = true;
                 break;
             }
@@ -101,7 +106,7 @@ public class FilePersistence implements IPersistence {
 
         boolean carExists = false;
         for (Car existingCar : getAllCars()) {
-            if (Objects.equals(existingCar.getId(), booking.getCar().getId())) {
+            if (existingCar.equals(booking.getCar())) {
                 carExists = true;
                 break;
             }
@@ -120,7 +125,7 @@ public class FilePersistence implements IPersistence {
             throw new UncheckedIOException("Unable to save booking on file ", e);
         }
 
-        bookings.add(booking);
+        bookings.put(booking.getId(), booking);
     }
 
     private String createBookingCsvFormat(Booking booking) {
@@ -136,28 +141,17 @@ public class FilePersistence implements IPersistence {
     }
 
     @Override
-    public void deleteBooking(UUID id) {
-        this.bookings = getAllBookings();
+    public void cancelBooking(UUID id) {
+        getAllBookings();
+        Booking bookingToCancel = bookings.get(id);
 
-        for (Booking booking : bookings) {
-            if (booking.getId().equals(id)) {
-                bookings.remove(booking);
-                break;
-            }
+        if (bookingToCancel != null){
+            bookingToCancel.setStatus(BookingStatus.CANCELLED);
         }
-
-        List<String> bookingsToCsvList = new ArrayList<>();
-
-        for (Booking booking : bookings) {
-            bookingsToCsvList.add(createBookingCsvFormat(booking));
+        else{
+            return;
         }
-
-        try {
-            bookingFileWriter.writeListToFile(bookingsToCsvList);
-
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot update booking file", e);
-        }
+        updateBookingFile();
     }
 
     @Override
@@ -165,7 +159,7 @@ public class FilePersistence implements IPersistence {
 
         List<Car> cars = new ArrayList<>();
         for (Booking booking : getAllBookings()) {
-            if (booking.getUser().getId().equals(user.getId())) {
+            if (booking.getUser().equals(user)) {
                 cars.add(booking.getCar());
             }
         }
@@ -175,11 +169,11 @@ public class FilePersistence implements IPersistence {
     @Override
     public List<Booking> getAllBookings() {
         if (bookings != null) {
-            return new ArrayList<>(bookings);
+            return new ArrayList<>(bookings.values());
         }
 
         List<String> allBookingFromFile;
-        List<Booking> bookingList = new ArrayList<>();
+        Map<UUID, Booking> bookingMap = new LinkedHashMap<>();
 
         try {
             allBookingFromFile = fileReader.readFile(bookingFileWriter.getPath());
@@ -191,13 +185,13 @@ public class FilePersistence implements IPersistence {
             for (String line : allBookingFromFile) {
                 Booking bookingFromLine = createBookingFromLine(line);
 
-                bookingList.add(bookingFromLine);
+                bookingMap.put(bookingFromLine.getId(), bookingFromLine);
             }
         }
 
-        this.bookings = bookingList;
+        this.bookings = bookingMap;
 
-        return new ArrayList<>(bookingList);
+        return new ArrayList<>(bookingMap.values());
     }
 
     private Booking createBookingFromLine(String line) {
@@ -247,6 +241,27 @@ public class FilePersistence implements IPersistence {
         LocalDate createdOn = LocalDate.of(Integer.parseInt(createdOnSplit[0]), Integer.parseInt(createdOnSplit[1]), Integer.parseInt(createdOnSplit[2]));
 
         return new Booking(UUID.fromString(bookingId), user, car, startDate, endDate, status, totalPrice, createdOn);
+    }
+
+    @Override
+    public void deleteBooking(UUID id) {
+        getAllBookings();
+        bookings.remove(id);
+
+        updateBookingFile();
+    }
+
+    private void updateBookingFile() {
+        List<String> bookingsToCsvList = new ArrayList<>();
+
+        bookings.values().forEach(booking -> bookingsToCsvList.add(createBookingCsvFormat(booking)));
+
+        try {
+            bookingFileWriter.writeListToFile(bookingsToCsvList);
+
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot update booking file", e);
+        }
     }
 
 }

@@ -17,7 +17,9 @@ public interface IPersistence {
     void setAllCars(List<Car> allCars);
 
     void createBooking(Booking booking);
-    void deleteBooking(UUID id);
+    void cancelBooking(UUID id);
     List<Car> getAllCarsUserBooked(User user);
     List<Booking> getAllBookings();
+
+     void deleteBooking(UUID id);
 }

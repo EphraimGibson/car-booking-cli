@@ -1,6 +1,7 @@
 package persistence;
 
 import entity.Booking;
+import entity.BookingStatus;
 import entity.Car;
 import entity.User;
 
@@ -35,11 +36,16 @@ public class MemoryPersistence implements IPersistence {
     @Override
     public List<Car> getAllAvailableCars() {
         List<Car> availableCars = new ArrayList<>();
-        List<Car> bookedCars = new ArrayList<>();
-        bookings.values().forEach(booking -> bookedCars.add(booking.getCar()));
+        Set<UUID> bookedCarIds = new HashSet<>();
+
+        bookings.values().forEach(booking -> {
+            if (booking.getStatus() == BookingStatus.ACTIVE){
+                bookedCarIds.add(booking.getCar().getId());
+            }
+        });
 
         for (Car car : allCars) {
-            if (!bookedCars.contains(car)) {
+            if (!bookedCarIds.contains(car.getId())){
                 availableCars.add(car);
             }
         }
@@ -58,15 +64,15 @@ public class MemoryPersistence implements IPersistence {
     }
     @Override
     public void createBooking(Booking booking) {
-        for (Booking booking1 : bookings.values()){
-            if (booking1.getCar().getId().equals(booking.getCar().getId())){
+        for (Booking existingBooking : bookings.values()){
+            if (existingBooking.getCar().equals(booking.getCar()) && existingBooking.getStatus().equals(BookingStatus.ACTIVE)){
                 throw new IllegalArgumentException("Car is already booked");
             }
         }
 
         boolean userExists = false;
         for (User existingUser : allUsers) {
-            if (Objects.equals(existingUser.getId(), booking.getUser().getId())) {
+            if (existingUser.equals(booking.getUser())) {
                 userExists = true;
                 break;
             }
@@ -77,7 +83,7 @@ public class MemoryPersistence implements IPersistence {
 
         boolean carExists = false;
         for (Car existingCar : allCars) {
-            if (Objects.equals(existingCar.getId(), booking.getCar().getId())) {
+            if (existingCar.equals(booking.getCar())) {
                 carExists = true;
                 break;
             }
@@ -92,15 +98,19 @@ public class MemoryPersistence implements IPersistence {
     }
 
     @Override
-    public void deleteBooking(UUID id) {
-        bookings.remove(id);
+    public void cancelBooking(UUID id) {
+        Booking booking = bookings.get(id);
+
+        if (booking != null){
+            booking.setStatus(BookingStatus.CANCELLED);
+        }
     }
 
     @Override
     public List<Car> getAllCarsUserBooked(User user) {
         List<Car> cars = new ArrayList<>();
         for (Booking booking : bookings.values()) {
-            if (booking.getUser().getId().equals(user.getId())) {
+            if (booking.getUser().equals(user)) {
                 cars.add(booking.getCar());
             }
         }
@@ -111,4 +121,12 @@ public class MemoryPersistence implements IPersistence {
     public List<Booking> getAllBookings() {
         return new ArrayList<>(bookings.values());
     }
+
+    @Override
+    public void deleteBooking(UUID id) {
+        getAllBookings();
+        bookings.remove(id);
+    }
+
+
 }

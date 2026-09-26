@@ -98,15 +98,15 @@ class BookingServiceTest {
     }
 
     @Test
-    void testShouldDeleteBookingSuccessfully() {
+    void testShouldCancelBookingSuccessfully() {
         //given
-       doNothing().when(persistenceMock).deleteBooking(booking.getId());
+       doNothing().when(persistenceMock).cancelBooking(booking.getId());
 
        //when
-        bookingService.deleteBooking(booking);
+        bookingService.cancelBooking(booking);
 
         //then
-        verify(persistenceMock).deleteBooking(booking.getId());
+        verify(persistenceMock).cancelBooking(booking.getId());
     }
 
     @Test

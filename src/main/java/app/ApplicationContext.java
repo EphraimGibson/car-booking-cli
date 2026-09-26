@@ -5,6 +5,7 @@ import entity.Car;
 import entity.User;
 import persistence.FilePersistence;
 import persistence.IPersistence;
+import persistence.MemoryPersistence;
 import service.BookingService;
 import service.CarService;
 import service.UserService;
@@ -20,8 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ApplicationContext {
-    public static final Path BOOKINGS_CSV_PATH = Path.of(System.getProperty("user.home"),
-            ".car-booking", "Bookings.csv");
+    public static final Path BOOKINGS_CSV_PATH =  Path.of("Bookings.csv");
     private final FileWriter fileWriter = new FileWriter(BOOKINGS_CSV_PATH);
     private final FileReader fileReader = new FileReader();
     private final IPersistence persistence = new FilePersistence(fileReader, fileWriter);

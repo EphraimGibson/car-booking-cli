@@ -24,9 +24,8 @@ class BookingConnectionTest {
     User testUser2;
     Car testCar1;
     Car testCar2;
-    Booking testBooking2;
     Booking testBooking1;
-
+    Booking testBooking2;
     LocalDate startDate = LocalDate.of(2027, 8, 15);
     LocalDate endDate = LocalDate.of(2027, 10, 20);
 
@@ -57,8 +56,8 @@ class BookingConnectionTest {
 
     @AfterEach
     void tearDown(){
-        bookingService.deleteBooking(testBooking1);
-        bookingService.deleteBooking(testBooking2);
+        bookingService.deleteBooking(testBooking1.getId());
+        bookingService.deleteBooking(testBooking2.getId());
     }
 
     @Test
@@ -116,7 +115,7 @@ class BookingConnectionTest {
     }
 
     @Test
-    void testDeleteBookingWorkflowSuccessful(){
+    void testCancelBookingWorkflowSuccessful(){
         //Given
         bookingService.makeBooking(testBooking2);
 
@@ -152,7 +151,7 @@ class BookingConnectionTest {
         assertEquals(testBooking2.getId(), result.getId());
 
         //when
-        bookingService.deleteBooking(testBooking2);
+        bookingService.cancelBooking(testBooking2);
 
         //then
          allBookings = bookingService.getAllBookings();
@@ -167,7 +166,8 @@ class BookingConnectionTest {
             }
         }
 
-        assertNull(result, "Booking should not exist");
+        assertNotNull(result);
+        assertEquals(BookingStatus.CANCELLED, result.getStatus(), "Booking Status should be cancelled");
 
         //check if car is available
 
