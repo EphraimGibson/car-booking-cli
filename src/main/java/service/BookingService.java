@@ -37,7 +37,7 @@ public class BookingService {
         persistence.deleteBooking(booking.getId());
     }
 
-    public List<Car> allUserCars(User user){
+    public List<Car> getAllUserBookedCars(User user){
         return persistence.getAllCarsUserBooked(user);
     }
 

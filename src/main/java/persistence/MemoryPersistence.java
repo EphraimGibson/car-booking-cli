@@ -10,7 +10,6 @@ public class MemoryPersistence implements IPersistence {
 
     private List<User> allUsers = new ArrayList<>();
     private List<Car> allCars = new ArrayList<>();
-
     private final Map<UUID, Booking> bookings = new HashMap<>();
 
     @Override
@@ -20,7 +19,12 @@ public class MemoryPersistence implements IPersistence {
 
     @Override
     public void setAllUsers(List<User> allUsers) {
-        this.allUsers = allUsers;
+        this.allUsers = new ArrayList<>(allUsers);
+    }
+
+    @Override
+    public void setAllCars(List<Car> allCars) {
+        this.allCars = new ArrayList<>(allCars);
     }
 
     @Override
@@ -52,17 +56,10 @@ public class MemoryPersistence implements IPersistence {
         }
         return electricCars;
     }
-
-    @Override
-    public void setAllCars(List<Car> allCars) {
-        this.allCars = allCars;
-    }
-
     @Override
     public void createBooking(Booking booking) {
-
         for (Booking booking1 : bookings.values()){
-            if (booking1.getCar().getId() == booking.getCar().getId()){
+            if (booking1.getCar().getId().equals(booking.getCar().getId())){
                 throw new IllegalArgumentException("Car is already booked");
             }
         }
@@ -79,7 +76,7 @@ public class MemoryPersistence implements IPersistence {
     public List<Car> getAllCarsUserBooked(User user) {
         List<Car> cars = new ArrayList<>();
         for (Booking booking : bookings.values()) {
-            if (booking.getUser().getId() == user.getId()) {
+            if (booking.getUser().getId().equals(user.getId())) {
                 cars.add(booking.getCar());
             }
         }
