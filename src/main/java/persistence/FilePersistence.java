@@ -142,7 +142,7 @@ public class FilePersistence implements IPersistence {
 
     @Override
     public void cancelBooking(UUID id) {
-        getAllBookings();
+        loadBookings();
         Booking bookingToCancel = bookings.get(id);
 
         if (bookingToCancel != null){
@@ -159,7 +159,7 @@ public class FilePersistence implements IPersistence {
 
         List<Car> cars = new ArrayList<>();
         for (Booking booking : getAllBookings()) {
-            if (booking.getUser().equals(user)) {
+            if (booking.getStatus().equals(BookingStatus.ACTIVE) && booking.getUser().equals(user)) {
                 cars.add(booking.getCar());
             }
         }
@@ -168,8 +168,13 @@ public class FilePersistence implements IPersistence {
 
     @Override
     public List<Booking> getAllBookings() {
+        loadBookings();
+        return new ArrayList<>(bookings.values());
+    }
+
+    private void loadBookings(){
         if (bookings != null) {
-            return new ArrayList<>(bookings.values());
+            return;
         }
 
         List<String> allBookingFromFile;
@@ -188,10 +193,7 @@ public class FilePersistence implements IPersistence {
                 bookingMap.put(bookingFromLine.getId(), bookingFromLine);
             }
         }
-
         this.bookings = bookingMap;
-
-        return new ArrayList<>(bookingMap.values());
     }
 
     private Booking createBookingFromLine(String line) {

@@ -6,6 +6,7 @@ import service.CarService;
 import service.UserService;
 
 public class TestApplicationContext {
+
     ApplicationContext applicationContext;
 
     public static TestApplicationContext getInstance() {
@@ -14,6 +15,7 @@ public class TestApplicationContext {
 
     public TestApplicationContext() {
         applicationContext = ApplicationContext.getContext();
+        applicationContext.setBookingsCsvPath("TestBooking.csv");
     }
 
     public UserService getUserservice() {

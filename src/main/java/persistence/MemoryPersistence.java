@@ -110,7 +110,7 @@ public class MemoryPersistence implements IPersistence {
     public List<Car> getAllCarsUserBooked(User user) {
         List<Car> cars = new ArrayList<>();
         for (Booking booking : bookings.values()) {
-            if (booking.getUser().equals(user)) {
+            if (booking.getStatus().equals(BookingStatus.ACTIVE) && booking.getUser().equals(user)) {
                 cars.add(booking.getCar());
             }
         }

@@ -10,12 +10,16 @@ import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
 public class FileWriter {
-    private final Path path;
+    private Path path;
 
     public Path getPath(){
         return path;
     }
     public FileWriter(Path pPath) {
+        path = pPath;
+    }
+
+    public void setPath(Path pPath){
         path = pPath;
     }
 
