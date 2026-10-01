@@ -8,6 +8,7 @@ import persistence.IPersistence;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public class BookingService {
     private final IPersistence persistence;
@@ -33,16 +34,20 @@ public class BookingService {
         persistence.createBooking(booking);
     }
 
-    public void deleteBooking(Booking booking){
-        persistence.deleteBooking(booking.getId());
+    public void cancelBooking(Booking booking){
+        persistence.cancelBooking(booking.getId());
     }
 
-    public List<Car> allUserCars(User user){
+    public List<Car> getAllUserBookedCars(User user){
         return persistence.getAllCarsUserBooked(user);
     }
 
     public List<Booking> getAllBookings() {
         return persistence.getAllBookings();
+    }
+
+    public void deleteBooking(UUID id){
+        persistence.deleteBooking(id);
     }
 
 }

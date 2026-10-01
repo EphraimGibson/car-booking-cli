@@ -12,6 +12,7 @@ import persistence.IPersistence;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -25,15 +26,18 @@ class BookingServiceTest {
     @InjectMocks
     BookingService bookingService;
 
+    User testUser = new User("John");
+
+    Car testCar = new Car("Benz", "A183jdn", BigDecimal.valueOf(59.23), Brand.MERCEDES, false);
+
+    LocalDate startDate = LocalDate.of(2027, 1, 8);
+    LocalDate endDate = LocalDate.of(2027, 1, 15);
+    Booking booking = new Booking(testUser, testCar, startDate, endDate );
+
+
     @Test
     void testMakeBookingSuccessful() {
         // Given
-        User testUser = new User("John");
-
-        Car testCar = new Car("Benz", "A183jdn", BigDecimal.valueOf(59.23), Brand.MERCEDES, false);
-
-        Booking booking = new Booking(testUser, testCar, LocalDate.of(2027, 1, 8), LocalDate.of(2027, 1, 15));
-
         doNothing().when(persistenceMock).createBooking(booking);
 
         // When
@@ -42,6 +46,25 @@ class BookingServiceTest {
         // Then
         Assertions.assertNotNull(booking.getStatus());
         Assertions.assertEquals(BookingStatus.ACTIVE, booking.getStatus());
+    }
+
+    @Test
+    void testBookingPriceIsCalculatedCorrectly() {
+        // Given
+        doNothing().when(persistenceMock).createBooking(booking);
+
+        BigDecimal priceOfCarPerDay = testCar.getPricePerDay();
+        int numberOfDaysBooked = Math.toIntExact(ChronoUnit.DAYS.between(startDate, endDate));
+
+        BigDecimal totalPrice = priceOfCarPerDay.multiply(new BigDecimal(numberOfDaysBooked));
+
+        // When
+        bookingService.makeBooking(booking);
+
+        // Then
+        Assertions.assertNotNull(booking.getStatus());
+        Assertions.assertEquals(BookingStatus.ACTIVE, booking.getStatus());
+        Assertions.assertEquals(totalPrice, booking.getTotalPrice(), "total price of booking is incorrect");
     }
 
     @Test
@@ -58,20 +81,57 @@ class BookingServiceTest {
         Assertions.assertSame(testBookings, result);
 
         verify(persistenceMock, times(1)).getAllBookings();
-
     }
 
     @Test
     void testMakeBookingShouldThrowErrorWhenStartDateIsInThePast(){
         // Given
-        User testUser = new User("John");
+        User testUser5 = new User("John");
 
-        Car testCar = new Car("Benz", "A183jdn", BigDecimal.valueOf(59.23), Brand.MERCEDES, false);
+        Car testCar5 = new Car("Benz", "A183jdn", BigDecimal.valueOf(59.23), Brand.MERCEDES, false);
 
-        Booking booking = new Booking(testUser, testCar, LocalDate.of(2026, 1, 8), LocalDate.of(2026, 1, 15));
+        Booking booking5 = new Booking(testUser5, testCar5, LocalDate.of(2026, 1, 8), LocalDate.of(2026, 1, 15));
 
         // When & Then
-        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class, () -> bookingService.makeBooking(booking));
+        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class, () -> bookingService.makeBooking(booking5));
         Assertions.assertEquals("Start date cannot be in the past", exception.getMessage());
+    }
+
+    @Test
+    void testShouldCancelBookingSuccessfully() {
+        //given
+       doNothing().when(persistenceMock).cancelBooking(booking.getId());
+
+       //when
+        bookingService.cancelBooking(booking);
+
+        //then
+        verify(persistenceMock).cancelBooking(booking.getId());
+    }
+
+    @Test
+    void testShouldGetAllUserBookedCars() {
+        //given
+        when(persistenceMock.getAllCarsUserBooked(testUser)).thenReturn(List.of());
+
+        //when
+        bookingService.getAllUserBookedCars(testUser);
+
+        //then
+        verify(persistenceMock).getAllCarsUserBooked(testUser);
+
+    }
+
+    @Test
+    void testShouldGetAllBookings() {
+        //given
+        when(persistenceMock.getAllBookings()).thenReturn(List.of());
+
+        //when
+        bookingService.getAllBookings();
+
+        //then
+        verify(persistenceMock).getAllBookings();
+
     }
 }

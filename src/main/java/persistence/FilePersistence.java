@@ -5,116 +5,66 @@ import utils.FileReader;
 import utils.FileWriter;
 
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.*;
 
 public class FilePersistence implements IPersistence {
-    public static final String BOOKINGS_CSV_FIlENAME = "Bookings.csv";
-    private final FileWriter bookingWriter;
+    private final FileWriter bookingFileWriter;
     private final FileReader fileReader;
     private List<Car> allCars;
     private List<User> allUsers;
 
-    private List<Booking> bookings;
+    private Map<UUID, Booking> bookings;
 
-    public FilePersistence() {
-        this.bookingWriter = new FileWriter(Path.of(BOOKINGS_CSV_FIlENAME));
-        fileReader = new FileReader();
+    public FilePersistence(FileReader pFileReader, FileWriter pBookingWriter) {
+        fileReader = pFileReader;
+        bookingFileWriter = pBookingWriter;
     }
 
     @Override
     public List<User> getAllUsers() {
         if (allUsers != null) {
             return new ArrayList<>(allUsers);
+        } else {
+            throw new IllegalStateException("Users have not been seeded into the system");
         }
-
-        List<String> allUsersFromFile;
-        List<User> users = new ArrayList<>();
-
-        try {
-            allUsersFromFile = fileReader.readFile(Path.of("Users.csv"));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to retrieve users from file", e);
-        }
-
-        if (!allUsersFromFile.isEmpty()) {
-            //skip car csv header
-
-            for (String line : allUsersFromFile.subList(1, allUsersFromFile.size())) {
-                String[] userLineSplit = line.split(",");
-
-                users.add(new User(UUID.fromString(userLineSplit[0]), userLineSplit[1]));
-            }
-        }
-        this.allUsers = users;
-
-
-        return new ArrayList<>(users);
     }
 
     @Override
     public void setAllUsers(List<User> allUsers) {
-        // data comes from file
+        this.allUsers = new ArrayList<>(allUsers);
+    }
+
+    @Override
+    public void setAllCars(List<Car> allCars) {
+        this.allCars = new ArrayList<>(allCars);
     }
 
     @Override
     public List<Car> getAllCars() {
-
         if (allCars != null) {
             return new ArrayList<>(allCars);
+        } else {
+            throw new IllegalStateException("Cars have not been seeded into the system");
         }
-
-        List<String> allCarsFromFile;
-        List<Car> cars = new ArrayList<>();
-
-        try {
-            allCarsFromFile = fileReader.readFile(Path.of("Cars.csv"));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to retrieve cars from file", e);
-        }
-
-        if (!allCarsFromFile.isEmpty()) {
-            //skip car csv header
-            for (String line : allCarsFromFile.subList(1, allCarsFromFile.size())) {
-                String[] carFields = line.split(",");
-
-                UUID carId = UUID.fromString(carFields[0]);
-                String model = carFields[1];
-                String registration = carFields[2];
-                BigDecimal price = new BigDecimal(carFields[3]);
-                boolean isElectric = Boolean.parseBoolean(carFields[5]);
-
-                Brand brand;
-
-                try {
-                    brand = Brand.valueOf(carFields[4]);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Car brand cannot be identified", e);
-                }
-
-                cars.add(new Car(carId, model, registration, price, brand, isElectric));
-            }
-        }
-
-        this.allCars = cars;
-
-        return new ArrayList<>(cars);
     }
 
     @Override
     public List<Car> getAllAvailableCars() {
         List<Car> availableCars = new ArrayList<>();
-        List<Car> bookedCars = new ArrayList<>();
-        getAllBookings().forEach(booking -> bookedCars.add(booking.getCar()));
+        Set<UUID> bookedCarIds = new HashSet<>();
+
+        getAllBookings().forEach(booking -> {
+            if (booking.getStatus() == BookingStatus.ACTIVE ){
+                bookedCarIds.add(booking.getCar().getId());
+            }
+        });
 
         for (Car car : getAllCars()) {
-            if (!bookedCars.contains(car)) {
+            if (!bookedCarIds.contains(car.getId())){
                 availableCars.add(car);
             }
         }
@@ -124,8 +74,8 @@ public class FilePersistence implements IPersistence {
     @Override
     public List<Car> allElectricCars() {
         List<Car> cars = getAllCars();
-
         List<Car> electricCars = new ArrayList<>();
+
         for (Car car : cars) {
             if (car.isElectric()) {
                 electricCars.add(car);
@@ -135,22 +85,17 @@ public class FilePersistence implements IPersistence {
     }
 
     @Override
-    public void setAllCars(List<Car> allCars) {
-        //data comes from file
-    }
-
-    @Override
     public void createBooking(Booking booking) {
 
         for (Booking existingBooking : getAllBookings()) {
-            if (existingBooking.getCar().getId().equals(booking.getCar().getId())) {
+            if (existingBooking.getCar().equals(booking.getCar()) && existingBooking.getStatus().equals(BookingStatus.ACTIVE)) {
                 throw new IllegalArgumentException("Car is already booked");
             }
         }
 
         boolean userExists = false;
         for (User existingUser : getAllUsers()) {
-            if (Objects.equals(existingUser.getId(), booking.getUser().getId())) {
+            if (existingUser.equals(booking.getUser())) {
                 userExists = true;
                 break;
             }
@@ -161,7 +106,7 @@ public class FilePersistence implements IPersistence {
 
         boolean carExists = false;
         for (Car existingCar : getAllCars()) {
-            if (Objects.equals(existingCar.getId(), booking.getCar().getId())) {
+            if (existingCar.equals(booking.getCar())) {
                 carExists = true;
                 break;
             }
@@ -172,75 +117,71 @@ public class FilePersistence implements IPersistence {
             throw new IllegalArgumentException("Car cannot be found, please use an existing car");
         }
 
-
-        StringBuilder bookingCsvFormat = new StringBuilder();
-
-        bookingCsvFormat.append(booking.getId()).append(",");
-        bookingCsvFormat.append(booking.getUser().getId()).append(",");
-        bookingCsvFormat.append(booking.getCar().getId()).append(",");
-        bookingCsvFormat.append(booking.getStartDate()).append(",");
-        bookingCsvFormat.append(booking.getEndDate()).append(",");
-        bookingCsvFormat.append(booking.getStatus()).append(",");
-        bookingCsvFormat.append(booking.getTotalPrice()).append(",");
-        bookingCsvFormat.append(booking.getCreatedOn());
+        String bookingCsvFormat = createBookingCsvFormat(booking);
 
         try {
-            bookingWriter.writeLineToFile(bookingCsvFormat.toString());
+            bookingFileWriter.writeLineToFile(bookingCsvFormat);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to save booking on file ", e);
         }
 
-        bookings.add(booking);
+        bookings.put(booking.getId(), booking);
+    }
+
+    private String createBookingCsvFormat(Booking booking) {
+
+        return booking.getId() + "," +
+                booking.getUser().getId() + "," +
+                booking.getCar().getId() + "," +
+                booking.getStartDate() + "," +
+                booking.getEndDate() + "," +
+                booking.getStatus() + "," +
+                booking.getTotalPrice() + "," +
+                booking.getCreatedOn();
     }
 
     @Override
-    public void deleteBooking(UUID id) {
-        List<Booking> allBookings = getAllBookings();
+    public void cancelBooking(UUID id) {
+        loadBookings();
+        Booking bookingToCancel = bookings.get(id);
 
-        for (Booking booking : allBookings) {
-            if (booking.getId().equals(id)) {
-                allBookings.remove(booking);
-                break;
-            }
+        if (bookingToCancel != null){
+            bookingToCancel.setStatus(BookingStatus.CANCELLED);
         }
-
-        try (BufferedWriter writer = Files.newBufferedWriter(Path.of(BOOKINGS_CSV_FIlENAME))) {
-            for (Booking booking : allBookings) {
-                StringBuilder bookingCsvFormat = new StringBuilder();
-
-                bookingCsvFormat.append(booking.getId()).append(",");
-                bookingCsvFormat.append(booking.getUser().getId()).append(",");
-                bookingCsvFormat.append(booking.getCar().getId()).append(",");
-                bookingCsvFormat.append(booking.getStartDate()).append(",");
-                bookingCsvFormat.append(booking.getEndDate()).append(",");
-                bookingCsvFormat.append(booking.getStatus()).append(",");
-                bookingCsvFormat.append(booking.getTotalPrice()).append(",");
-                bookingCsvFormat.append(booking.getCreatedOn());
-
-                writer.write(bookingCsvFormat.toString());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot update booking file", e);
+        else{
+            return;
         }
+        updateBookingFile();
     }
 
     @Override
     public List<Car> getAllCarsUserBooked(User user) {
-        return List.of();
+
+        List<Car> cars = new ArrayList<>();
+        for (Booking booking : getAllBookings()) {
+            if (booking.getStatus().equals(BookingStatus.ACTIVE) && booking.getUser().equals(user)) {
+                cars.add(booking.getCar());
+            }
+        }
+        return cars;
     }
 
     @Override
     public List<Booking> getAllBookings() {
+        loadBookings();
+        return new ArrayList<>(bookings.values());
+    }
+
+    private void loadBookings(){
         if (bookings != null) {
-            return new ArrayList<>(bookings);
+            return;
         }
 
         List<String> allBookingFromFile;
-        List<Booking> bookingList = new ArrayList<>();
+        Map<UUID, Booking> bookingMap = new LinkedHashMap<>();
 
         try {
-            allBookingFromFile = fileReader.readFile(Path.of(BOOKINGS_CSV_FIlENAME));
+            allBookingFromFile = fileReader.readFile(bookingFileWriter.getPath());
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to retrieve booking from file", e);
         }
@@ -249,13 +190,10 @@ public class FilePersistence implements IPersistence {
             for (String line : allBookingFromFile) {
                 Booking bookingFromLine = createBookingFromLine(line);
 
-                bookingList.add(bookingFromLine);
+                bookingMap.put(bookingFromLine.getId(), bookingFromLine);
             }
         }
-
-        this.bookings = bookingList;
-
-        return new ArrayList<>(bookingList);
+        this.bookings = bookingMap;
     }
 
     private Booking createBookingFromLine(String line) {
@@ -287,18 +225,10 @@ public class FilePersistence implements IPersistence {
             throw new IllegalArgumentException("can't find the car in booking file");
         }
 
-        String[] startDateSplitted = bookingField[3].split("-");
-        LocalDate startDate = LocalDate.of(
-                Integer.parseInt(startDateSplitted[0]),
-                Integer.parseInt(startDateSplitted[1]),
-                Integer.parseInt(startDateSplitted[2])
-        );
-        String[] endDateSplitted = bookingField[4].split("-");
-        LocalDate endDate = LocalDate.of(
-                Integer.parseInt(endDateSplitted[0]),
-                Integer.parseInt(endDateSplitted[1]),
-                Integer.parseInt(endDateSplitted[2])
-        );
+        String[] startDateSplit = bookingField[3].split("-");
+        LocalDate startDate = LocalDate.of(Integer.parseInt(startDateSplit[0]), Integer.parseInt(startDateSplit[1]), Integer.parseInt(startDateSplit[2]));
+        String[] endDateSplit = bookingField[4].split("-");
+        LocalDate endDate = LocalDate.of(Integer.parseInt(endDateSplit[0]), Integer.parseInt(endDateSplit[1]), Integer.parseInt(endDateSplit[2]));
 
         BookingStatus status;
         try {
@@ -309,15 +239,31 @@ public class FilePersistence implements IPersistence {
 
         BigDecimal totalPrice = new BigDecimal(bookingField[6]);
 
-        String[] createdOnSplitted = bookingField[7].split("-");
-        LocalDate createdOn = LocalDate.of(
-                Integer.parseInt(createdOnSplitted[0]),
-                Integer.parseInt(createdOnSplitted[1]),
-                Integer.parseInt(createdOnSplitted[2])
-        );
+        String[] createdOnSplit = bookingField[7].split("-");
+        LocalDate createdOn = LocalDate.of(Integer.parseInt(createdOnSplit[0]), Integer.parseInt(createdOnSplit[1]), Integer.parseInt(createdOnSplit[2]));
 
-        return new Booking(UUID.fromString(bookingId), user, car, startDate,
-                endDate, status, totalPrice, createdOn);
+        return new Booking(UUID.fromString(bookingId), user, car, startDate, endDate, status, totalPrice, createdOn);
+    }
+
+    @Override
+    public void deleteBooking(UUID id) {
+        getAllBookings();
+        bookings.remove(id);
+
+        updateBookingFile();
+    }
+
+    private void updateBookingFile() {
+        List<String> bookingsToCsvList = new ArrayList<>();
+
+        bookings.values().forEach(booking -> bookingsToCsvList.add(createBookingCsvFormat(booking)));
+
+        try {
+            bookingFileWriter.writeListToFile(bookingsToCsvList);
+
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot update booking file", e);
+        }
     }
 
 }

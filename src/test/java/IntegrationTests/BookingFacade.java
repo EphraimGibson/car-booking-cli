@@ -25,18 +25,17 @@ public class BookingFacade {
 
         try (BufferedWriter writer = Files.newBufferedWriter(Path.of("Bookings.csv"))){
             for (Booking booking : allBookings){
-                StringBuilder bookingCsvFormat = new StringBuilder();
 
-                bookingCsvFormat.append(booking.getId()).append(",");
-                bookingCsvFormat.append(booking.getUser().getId()).append(",");
-                bookingCsvFormat.append(booking.getCar().getId()).append(",");
-                bookingCsvFormat.append(booking.getStartDate()).append(",");
-                bookingCsvFormat.append(booking.getEndDate()).append(",");
-                bookingCsvFormat.append(booking.getStatus()).append(",");
-                bookingCsvFormat.append(booking.getTotalPrice()).append(",");
-                bookingCsvFormat.append(booking.getCreatedOn()).append(",");
+                String bookingCsvFormat = booking.getId() + "," +
+                        booking.getUser().getId() + "," +
+                        booking.getCar().getId() + "," +
+                        booking.getStartDate() + "," +
+                        booking.getEndDate() + "," +
+                        booking.getStatus() + "," +
+                        booking.getTotalPrice() + "," +
+                        booking.getCreatedOn() + ",";
 
-                writer.write(bookingCsvFormat.toString());
+                writer.write(bookingCsvFormat);
                 writer.newLine();
             }
         } catch (IOException e) {
