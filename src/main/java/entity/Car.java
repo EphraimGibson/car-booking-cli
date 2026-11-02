@@ -98,5 +98,9 @@ public class Car {
         isElectric = electric;
     }
 
+    @Override
+    public String toString() {
+        return brand + " " + model + " " + registrationNumber;
+    }
 
 }

@@ -4,9 +4,9 @@ import entity.Booking;
 import entity.Car;
 import entity.User;
 
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Scanner;
 
@@ -17,8 +17,8 @@ public class CLI {
     }
 
     public static void startCarBookingService() {
-        CLIContext app = new CLIContext();
         Scanner scanner = new Scanner(System.in);
+        CLIContext app = new CLIContext(scanner);
         boolean exitMenu = false;
         do {
             System.out.println("""
@@ -36,9 +36,7 @@ public class CLI {
             String input = scanner.nextLine();
 
             switch (input) {
-                case "1" -> {
-                    System.out.println("Please select a User From List");
-                }
+                case "1" -> app.bookCarFlow();
                 case "2" -> System.out.println();
                 case "3" -> System.out.println();
                 case "4" -> System.out.println();
@@ -61,19 +59,27 @@ public class CLI {
     public static class CLIContext {
 
         ApplicationContext app = ApplicationContext.getContext();
+        private final Scanner scanner;
+
+        public CLIContext(Scanner scanner) {
+            this.scanner = scanner;
+        }
 
         public void bookCarFlow() {
-            Scanner scanner = new Scanner(System.in);
-
 
             boolean carbooked = false;
             do {
                 System.out.println("Please select a user from the list below:\n");
                 User selectedUser = getUserFromInput();
+                if (selectedUser == null) {
+                    return;
+                }
 
-
-                System.out.println("Please select a acr from the list below:\n");
+                System.out.println("Please select a car from the list below:\n");
                 Car selectedCar = getCarFromInput();
+                if (selectedCar == null) {
+                    return;
+                }
 
                 System.out.println("Please input a start date in this format YYYY-MM-DD");
                 LocalDate startDate = getDateFromInput();
@@ -81,37 +87,46 @@ public class CLI {
                 System.out.println("Please input a end date in this format YYYY-MM-DD");
                 LocalDate endDate = getDateFromInput();
 
-                Booking booking = new Booking(selectedUser, selectedCar, startDate, endDate);
+                Booking booking;
+                try {
+                    booking = new Booking(selectedUser, selectedCar, startDate, endDate);
+                } catch (IllegalArgumentException e) {
+                    System.out.println(e.getMessage() + ". Please start again.");
+                    continue;
+                }
                 BigDecimal totalPrice = booking.getTotalPrice();
 
                 System.out.printf("""
-                        Review Booking\n User: %s \n Car: %s\n, Duration: %s - %s\n, Total Price: %s\n\n
-                        Would you like to make the booking?\n Input Y/N:
-                        """, selectedUser, selectedCar, startDate, endDate, totalPrice);
+                        Review Booking
+                         User: %s
+                         Car: %s
+                         Duration: %s - %s
+                         Total Price: %s
+
+                        Would you like to make the booking?
+                         Input Y/N:
+                        """, selectedUser.getName(), selectedCar, startDate, endDate, totalPrice);
 
                 while (true) {
 
                     String confirmation = scanner.nextLine();
                     confirmation = confirmation.toLowerCase();
-                    if (confirmation.equals("y") || confirmation.equals("n")) {
-                        switch (confirmation) {
-                            case "y": {
-
-                                try {
-                                    app.getBookingService()
-                                            .makeBooking(booking);
-                                    carbooked = true;
-                                } catch (Exception e) {
-                                    System.out.println(e.getMessage());
-                                }
-                                break;
-                            }
-                            case "n": {
-                                break;
-                            }
+                    if (confirmation.equals("y")) {
+                        try {
+                            app.getBookingService()
+                                    .makeBooking(booking);
+                            System.out.println("Booking made!");
+                            carbooked = true;
+                        } catch (Exception e) {
+                            System.out.println(e.getMessage());
                         }
+                        break;
+                    } else if (confirmation.equals("n")) {
+                        System.out.println("Booking cancelled, starting again");
+                        break;
+                    } else {
+                        System.out.println("Please enter Y or N");
                     }
-
                 }
 
             }
@@ -120,13 +135,18 @@ public class CLI {
 
 
         private User getUserFromInput() {
-            Scanner scanner = new Scanner(System.in);
             List<User> allUsers = app.getUserService().getAllUsers();
+
+            if (allUsers.isEmpty()) {
+                System.out.println("There are no users available");
+                return null;
+            }
 
             StringBuilder userSelection = new StringBuilder();
 
             for (int i = 0; i < allUsers.size(); i++) {
                 userSelection.append(i + 1)
+                        .append(" - ")
                         .append(allUsers.get(i).getName())
                         .append(System.lineSeparator());
             }
@@ -141,6 +161,7 @@ public class CLI {
                     if (choice >= 1 && choice <= allUsers.size()) {
                         return allUsers.get(choice - 1);
                     }
+                    System.out.println("Please choose a number between 1 and " + allUsers.size());
 
                 } catch (NumberFormatException e) {
                     System.out.println("Please enter a valid number to select user");
@@ -150,13 +171,18 @@ public class CLI {
         }
 
         private Car getCarFromInput() {
-            Scanner scanner = new Scanner(System.in);
             List<Car> allAvailableCars = app.getCarService().getAllAvailableCars();
+
+            if (allAvailableCars.isEmpty()) {
+                System.out.println("There are no available cars");
+                return null;
+            }
 
             StringBuilder carSelection = new StringBuilder();
 
             for (int i = 0; i < allAvailableCars.size(); i++) {
                 carSelection.append(i + 1)
+                        .append(" - ")
                         .append(allAvailableCars.get(i).getRegistrationNumber())
                         .append("  ")
                         .append(allAvailableCars.get(i).getBrand())
@@ -178,6 +204,7 @@ public class CLI {
                     if (choice >= 1 && choice <= allAvailableCars.size()) {
                         return allAvailableCars.get(choice - 1);
                     }
+                    System.out.println("Please choose a number between 1 and " + allAvailableCars.size());
 
                 } catch (NumberFormatException e) {
                     System.out.println("Please enter a valid number to select Car");
@@ -187,7 +214,18 @@ public class CLI {
         }
 
         private LocalDate getDateFromInput() {
-            return null;
+            while (true) {
+                try {
+                    LocalDate date = LocalDate.parse(scanner.nextLine().trim());
+                    if (date.isBefore(LocalDate.now())) {
+                        System.out.println("Date cannot be in the past, try again");
+                        continue;
+                    }
+                    return date;
+                } catch (DateTimeParseException e) {
+                    System.out.println("Invalid date, use the format YYYY-MM-DD");
+                }
+            }
         }
     }
 
